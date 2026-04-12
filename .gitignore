@@ -1,0 +1,14 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.log
+
+## Environment
+appsettings.Production.json
+.env
+
+## Docker
+docker-compose.override.yml
