@@ -18,9 +18,13 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
-        policy.WithOrigins("http://localhost:4200")
-              .AllowAnyHeader()
-              .AllowAnyMethod());
+        policy.WithOrigins(
+                "http://localhost:4200",
+                "https://slideswiperapp-cp92.onrender.com"
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+    );
 });
 
 // Global validation behavior using MediatR pipeline
