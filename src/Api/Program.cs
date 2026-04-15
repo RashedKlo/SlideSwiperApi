@@ -1,8 +1,8 @@
 using Application;
-using FluentValidation;
+using Application.Common.Behaviors;
 using Infrastructure;
 using MediatR;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,7 +18,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
-        policy.WithOrigins(
+      policy.WithOrigins(
                 "http://localhost:4200",
                 "https://slideswiperapp-cp92.onrender.com"
             )
@@ -26,7 +26,17 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod()
     );
 });
-
+// Rate limiting — 30 requests per minute per client
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("fixed", opt =>
+    {
+        opt.PermitLimit = 30;          // max 30 requests
+        opt.Window = TimeSpan.FromMinutes(1); // per 1 minute
+        opt.QueueLimit = 0;            // no queuing
+    });
+    options.RejectionStatusCode = 429; // Too Many Requests
+});
 // Global validation behavior using MediatR pipeline
 builder.Services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 
@@ -40,50 +50,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors("AllowAngular");
+app.UseRateLimiter();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
 
-// Auto-migrate on startup
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider
-        .GetRequiredService<Infrastructure.Persistence.AppDbContext>();
-    db.Database.Migrate();
-}
+
 
 app.Run();
-
-// ── Validation Pipeline Behavior ───────────────────────────
-public class ValidationBehavior<TRequest, TResponse>
-    : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : notnull
-{
-    private readonly IEnumerable<IValidator<TRequest>> _validators;
-
-    public ValidationBehavior(IEnumerable<IValidator<TRequest>> validators)
-    {
-        _validators = validators;
-    }
-
-    public async Task<TResponse> Handle(
-        TRequest request,
-        RequestHandlerDelegate<TResponse> next,
-        CancellationToken cancellationToken)
-    {
-        if (!_validators.Any()) return await next();
-
-        var context = new ValidationContext<TRequest>(request);
-
-        var failures = _validators
-            .Select(v => v.Validate(context))
-            .SelectMany(r => r.Errors)
-            .Where(f => f is not null)
-            .ToList();
-
-        if (failures.Count != 0)
-            throw new ValidationException(failures);
-
-        return await next();
-    }
-}
