@@ -5,11 +5,13 @@ using Application.Slides.Queries.GetAllSlides;
 using Application.Slides.Queries.GetSlideById;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Api.Controllers;
 
 [ApiController]
 [Route("api/slides")]
+[EnableRateLimiting("fixed")]
 public class SlidesController : ControllerBase
 {
     private readonly IMediator _mediator;
