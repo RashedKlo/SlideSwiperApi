@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   api:
-    build: .
+    build:
+      context: .
+      target: final
     ports:
       - "8080:8080"
     environment:
@@ -13,6 +15,22 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+  # Optional: Run tests during build
+  tests:
+    build:
+      context: .
+      target: test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=SlideSwiperDb;Username=postgres;Password=postgres
+      - ConnectionStrings__Redis=redis:6379
+    # Uncomment to run tests automatically
+    # command: dotnet test tests/Tests/Tests.csproj -c Release --no-build --logger "console;verbosity=normal"
 
   postgres:
     image: postgres:16
