@@ -5,28 +5,33 @@ EXPOSE 8080
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-COPY ["src/Api/Api.csproj", "Api/"]
-COPY ["src/Application/Application.csproj", "Application/"]
-COPY ["src/Domain/Domain.csproj", "Domain/"]
-COPY ["src/Infrastructure/Infrastructure.csproj", "Infrastructure/"]
-COPY ["tests/Tests/Tests.csproj", "Tests/"]
+# Copy project files into the same structure as your local 'src' and 'tests' folders
+COPY ["src/Api/Api.csproj", "src/Api/"]
+COPY ["src/Application/Application.csproj", "src/Application/"]
+COPY ["src/Domain/Domain.csproj", "src/Domain/"]
+COPY ["src/Infrastructure/Infrastructure.csproj", "src/Infrastructure/"]
+COPY ["tests/Tests/Tests.csproj", "tests/Tests/"]
 
-RUN dotnet restore "Api/Api.csproj"
-RUN dotnet restore "Tests/Tests.csproj"
+# Restore using the new paths
+RUN dotnet restore "src/Api/Api.csproj"
+RUN dotnet restore "tests/Tests/Tests.csproj"
 
+# Copy the rest of the source code
 COPY src/ src/
 COPY tests/ tests/
 
-RUN dotnet build "Api/Api.csproj" -c Release -o /app/build
-RUN dotnet build "Tests/Tests.csproj" -c Release -o /app/tests
+# Build using the correct paths
+RUN dotnet build "src/Api/Api.csproj" -c Release -o /app/build
+RUN dotnet build "tests/Tests/Tests.csproj" -c Release -o /app/tests
 
-# Test stage (optional: run tests during build)
+# Test stage
 FROM build AS test
 WORKDIR /src
-RUN dotnet test "Tests/Tests.csproj" -c Release --no-build --logger "console;verbosity=normal"
+RUN dotnet test "tests/Tests/Tests.csproj" -c Release --no-build --logger "console;verbosity=normal"
 
+# Publish stage
 FROM build AS publish
-RUN dotnet publish "Api/Api.csproj" -c Release -o /app/publish
+RUN dotnet publish "src/Api/Api.csproj" -c Release -o /app/publish
 
 FROM base AS final
 WORKDIR /app
